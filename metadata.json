@@ -1,0 +1,10 @@
+{
+  "name": "The Tiebreaker",
+  "description": "An AI-powered decision-making assistant that provides pros and cons, comparison tables, and SWOT analysis with weighted scoring to help you make informed choices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "AI Analysis",
+    "Decision Support",
+    "Data Visualization"
+  ]
+}
