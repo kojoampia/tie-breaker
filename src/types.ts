@@ -15,6 +15,7 @@ export interface Factor {
   text: string;
   weight: number; // -10 to 10
   category: 'pro' | 'con';
+  sentiment?: number; // -1.0 to 1.0
 }
 
 export interface SWOT {

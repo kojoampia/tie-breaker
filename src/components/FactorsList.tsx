@@ -198,23 +198,39 @@ function FactorItem({ factor, onUpdateWeight, colorClass }: { factor: Factor, on
     return 'Negligible Force';
   };
 
+  const sentiment = factor.sentiment ?? 0;
+  const sentimentColor = sentiment > 0.3 ? 'text-emerald-600' : sentiment < -0.3 ? 'text-rose-500' : 'text-slate-400';
+  const sentimentLabel = sentiment > 0.3 ? 'Optimistic Phrasing' : sentiment < -0.3 ? 'Pessimistic Bias' : 'Neutral Tone';
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="flex flex-col gap-4 group bg-slate-50/30 p-4 border border-transparent hover:border-slate-100 hover:bg-white transition-all"
+      className="flex flex-col gap-4 group bg-slate-50/30 p-4 border border-transparent hover:border-slate-100 hover:bg-white transition-all shadow-sm"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="grow space-y-1">
-          <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-tight">{factor.text}</h4>
-          <p className={cn(
-            "text-[9px] font-black uppercase tracking-[0.2em]",
-            colorClass === 'indigo' ? "text-indigo-600" : "text-rose-500"
-          )}>
-            {getImpactLabel(factor.weight)}
-          </p>
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-tight">{factor.text}</h4>
+            <div 
+              title={`Sentiment Score: ${sentiment.toFixed(2)}`}
+              className={cn("w-1.5 h-1.5 rounded-full shrink-0", sentiment > 0.3 ? 'bg-emerald-500' : sentiment < -0.3 ? 'bg-rose-500' : 'bg-slate-300')} 
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <p className={cn(
+              "text-[9px] font-black uppercase tracking-[0.2em]",
+              colorClass === 'indigo' ? "text-indigo-600" : "text-rose-500"
+            )}>
+              {getImpactLabel(factor.weight)}
+            </p>
+            <span className="text-[10px] text-slate-200">/</span>
+            <p className={cn("text-[8px] font-black uppercase tracking-[0.15em] italic", sentimentColor)}>
+              {sentimentLabel}
+            </p>
+          </div>
         </div>
         <div className="flex items-center border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
           <button 

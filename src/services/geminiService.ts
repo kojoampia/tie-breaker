@@ -24,9 +24,10 @@ const ANALYSIS_SCHEMA = {
           id: { type: Type.STRING },
           text: { type: Type.STRING },
           weight: { type: Type.NUMBER, description: "Initial suggested weight from 1 to 5 (always positive, mapped later to category)" },
-          category: { type: Type.STRING, enum: ["pro", "con"] }
+          category: { type: Type.STRING, enum: ["pro", "con"] },
+          sentiment: { type: Type.NUMBER, description: "Qualitative sentiment score from -1.0 (very negative phrasing) to 1.0 (very positive phrasing)" }
         },
-        required: ["id", "text", "weight", "category"]
+        required: ["id", "text", "weight", "category", "sentiment"]
       }
     },
     swot: {
@@ -68,7 +69,7 @@ const ANALYSIS_SCHEMA = {
 export async function analyzeDecision(query: string): Promise<DecisionAnalysis> {
   const prompt = `Analyze the following decision query: "${query}". 
   Provide a comprehensive analysis including:
-  1. A list of pros and cons (factors) with suggested impact weights (1-5).
+  1. A list of pros and cons (factors) with suggested impact weights (1-5) and a sentiment score (-1.0 to 1.0) based on how emotionally/linguistically positive or negative the phrasing is.
   2. A SWOT analysis (Strengths, Weaknesses, Opportunities, Threats).
   3. A comparison table structure. If there's only one option, compare the "Doing it" vs "Not doing it" scenarios.
   4. A final summary or "tiebreaker" initial perspective.

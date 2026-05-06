@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Factor, cn } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Swords, ChevronRight, ChevronLeft, Scale } from 'lucide-react';
+import { Swords, ChevronRight, ChevronLeft, Scale, FileJson, FileText, Download } from 'lucide-react';
 
 interface PairwiseViewProps {
   factors: Factor[];
@@ -20,17 +20,53 @@ export function PairwiseView({ factors, onUpdateWeight }: PairwiseViewProps) {
   const factorA = factors.find(f => f.id === selectedFactorA);
   const factorB = factors.find(f => f.id === selectedFactorB);
 
+  const handleExportJSON = () => {
+    if (!factorA || !factorB) return;
+    const data = {
+      timestamp: new Date().getTime(),
+      comparison: {
+        factorA: { text: factorA.text, weight: factorA.weight, category: factorA.category },
+        factorB: { text: factorB.text, weight: factorB.weight, category: factorB.category },
+        differential: Math.abs(factorA.weight - factorB.weight)
+      }
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pairwise-manifest-${new Date().getTime()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportTXT = () => {
+    if (!factorA || !factorB) return;
+    const report = `PAIRWISE COMPARISON REPORT\nGenerated: ${new Date().toLocaleString()}\n\n` +
+      `NODE ALPHA: ${factorA.text}\nCategory: ${factorA.category.toUpperCase()}\nWeight: ${factorA.weight}\n\n` +
+      `NODE BETA: ${factorB.text}\nCategory: ${factorB.category.toUpperCase()}\nWeight: ${factorB.weight}\n\n` +
+      `DIFFERENTIAL: ${Math.abs(factorA.weight - factorB.weight)}\n\n` +
+      `VERDICT: ${factorA.weight > factorB.weight ? factorA.text : factorB.weight > factorA.weight ? factorB.text : "Equilibrium"} is dominant.`;
+    
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pairwise-report-${new Date().getTime()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="mt-8 space-y-px bg-slate-200 border border-slate-200">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-px">
         {/* Selection Column */}
-        <div className="lg:col-span-4 bg-white p-8 border-r border-slate-200">
+        <div className="lg:col-span-4 bg-white p-8 border-r border-slate-200 flex flex-col">
           <div className="flex justify-between items-center mb-8">
             <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em]">Select Nodes</span>
             <span className="text-3xl font-black text-slate-100 italic leading-none">SEL</span>
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-6 shrink-0">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Factor Alpha</p>
               <select 
@@ -64,10 +100,37 @@ export function PairwiseView({ factors, onUpdateWeight }: PairwiseViewProps) {
             </div>
           </div>
 
-          <div className="mt-10 p-6 bg-slate-50 border border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
-              * Direct pairwise comparison forces psychological evaluation of relative importance. Adjust weights to reach equilibrium.
-            </p>
+          <div className="mt-12 pt-8 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-6">
+              <Download size={14} className="text-slate-900" />
+              <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Export Comparison</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={handleExportJSON}
+                disabled={!factorA || !factorB || factorA.id === factorB.id}
+                className="flex items-center justify-center gap-2 px-3 py-3 border-2 border-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-900 transition-all"
+              >
+                <FileJson size={14} />
+                <span>JSON</span>
+              </button>
+              <button 
+                onClick={handleExportTXT}
+                disabled={!factorA || !factorB || factorA.id === factorB.id}
+                className="flex items-center justify-center gap-2 px-3 py-3 border-2 border-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-900 transition-all"
+              >
+                <FileText size={14} />
+                <span>Text</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-auto pt-10">
+            <div className="p-6 bg-slate-50 border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
+                * Direct pairwise comparison forces psychological evaluation of relative importance. Adjust weights to reach equilibrium.
+              </p>
+            </div>
           </div>
         </div>
 
