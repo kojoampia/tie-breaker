@@ -235,7 +235,14 @@ function FactorItem({ factor, onUpdateWeight, colorClass }: { factor: Factor, on
         </div>
       </div>
       
-      <div className="relative h-4 bg-slate-100 border border-slate-200 overflow-hidden group-hover:border-slate-300 transition-colors">
+      <div className="relative h-4 bg-slate-100 border border-slate-200 overflow-hidden group-hover:border-slate-300 transition-colors group/gauge">
+        {/* Tooltip Overlay */}
+        <div className="absolute inset-0 opacity-0 group-hover/gauge:opacity-100 transition-opacity pointer-events-none flex items-center justify-center z-10">
+          <div className="bg-slate-900 text-white text-[8px] font-black px-3 py-1 uppercase tracking-widest border border-indigo-500 shadow-[4px_4px_0px_0px_rgba(79,70,229,1)]">
+            Magnitude: {factor.weight}.0
+          </div>
+        </div>
+
         {/* Gauge Background Ticks */}
         <div className="absolute inset-0 flex justify-between px-px pointer-events-none opacity-20">
           {[...Array(11)].map((_, i) => (
