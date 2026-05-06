@@ -40,4 +40,11 @@ export interface DecisionAnalysis {
   summary: string;
 }
 
-export type AnalysisMode = 'list' | 'table' | 'swot' | 'pairwise';
+export interface HistoryEntry {
+  id: string;
+  query: string;
+  analysis: DecisionAnalysis;
+  timestamp: number;
+}
+
+export type AnalysisMode = 'list' | 'table' | 'swot' | 'pairwise' | 'history';

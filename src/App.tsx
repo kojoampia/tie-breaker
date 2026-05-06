@@ -10,24 +10,35 @@ import { FactorsList } from './components/FactorsList';
 import { ComparisonView } from './components/ComparisonView';
 import { SwotView } from './components/SwotView';
 import { PairwiseView } from './components/PairwiseView';
+import { HistoryList } from './components/HistoryList';
 import { analyzeDecision } from './services/geminiService';
-import { DecisionAnalysis, AnalysisMode, Factor, cn } from './types';
+import { DecisionAnalysis, AnalysisMode, Factor, HistoryEntry, cn } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { RotateCcw, BrainCircuit, ChevronRight } from 'lucide-react';
+import { RotateCcw, BrainCircuit, ChevronRight, ArrowLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function App() {
   const [analysis, setAnalysis] = useState<DecisionAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<AnalysisMode>('list');
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [activeQuery, setActiveQuery] = useState<string>("");
 
   const handleAnalyze = async (query: string) => {
     setIsLoading(true);
     try {
       const result = await analyzeDecision(query);
       setAnalysis(result);
-      setHistory(prev => [query, ...prev].slice(0, 5));
+      setActiveQuery(query);
+      
+      const newEntry: HistoryEntry = {
+        id: crypto.randomUUID(),
+        query,
+        analysis: result,
+        timestamp: Date.now()
+      };
+      setHistory(prev => [newEntry, ...prev]);
+      setMode('list');
     } catch (error) {
       alert("Analysis failed. Please try again.");
     } finally {
@@ -44,15 +55,71 @@ export default function App() {
   const handleReset = () => {
     setAnalysis(null);
     setMode('list');
+    setActiveQuery("");
+  };
+
+  const handleSelectHistory = (entry: HistoryEntry) => {
+    setAnalysis(entry.analysis);
+    setActiveQuery(entry.query);
+    setMode('list');
+  };
+
+  const handleDeleteHistory = (id: string) => {
+    setHistory(prev => prev.filter(e => e.id !== id));
+  };
+
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tiebreaker-${filename}-${new Date().getTime()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 font-sans selection:bg-indigo-600 selection:text-white">
-      <Header />
+      <Header 
+        showHistory={mode === 'history'} 
+        onShowHistory={() => setMode(mode === 'history' ? 'list' : 'history')} 
+      />
       
       <main className="max-w-7xl mx-auto px-6 py-16">
         <AnimatePresence mode="wait">
-          {!analysis ? (
+          {mode === 'history' ? (
+            <motion.div
+              key="history-view"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.02 }}
+              className="space-y-12"
+            >
+              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-8">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Knowledge Base</span>
+                  <h2 className="text-4xl font-black text-slate-900 italic tracking-tight uppercase leading-none">
+                    Archived Nodes
+                  </h2>
+                </div>
+                {analysis && (
+                  <button 
+                    onClick={() => setMode('list')}
+                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-[4px_4px_0px_0px_rgba(79,70,229,1)]"
+                  >
+                    <ArrowLeft size={14} strokeWidth={3} />
+                    <span>Return to Active Trace</span>
+                  </button>
+                )}
+              </div>
+              
+              <HistoryList 
+                entries={history} 
+                onSelect={handleSelectHistory} 
+                onDelete={handleDeleteHistory} 
+              />
+            </motion.div>
+          ) : !analysis ? (
             <motion.div
               key="input-view"
               initial={{ opacity: 0, scale: 0.98 }}
@@ -100,7 +167,7 @@ export default function App() {
                 <div className="space-y-2">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Query Active</span>
                   <h2 className="text-4xl font-black text-slate-900 italic tracking-tight uppercase leading-none">
-                    "{history[0]}"
+                    "{activeQuery}"
                   </h2>
                 </div>
                 
@@ -146,39 +213,53 @@ export default function App() {
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `tiebreaker-analysis-${new Date().toISOString().split('T')[0]}.json`;
+                        a.download = `tiebreaker-full-node-${new Date().getTime()}.json`;
                         a.click();
                         URL.revokeObjectURL(url);
                       }}
                       className="w-full py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.3em] hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 group"
                     >
-                      Binary JSON <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      Binary Full JSON <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </button>
-                    <button 
+                    
+                    <div className="h-px bg-slate-200 my-2" />
+                    
+                    <ExportButton 
+                      label="Full Report (TXT)"
                       onClick={() => {
                         const pros = analysis.factors.filter(f => f.category === 'pro').map(f => `+ ${f.text} (Weight: ${f.weight})`).join('\n');
                         const cons = analysis.factors.filter(f => f.category === 'con').map(f => `- ${f.text} (Weight: ${f.weight})`).join('\n');
                         const swot = `STRENGTHS:\n${analysis.swot.strengths.join('\n')}\n\nWEAKNESSES:\n${analysis.swot.weaknesses.join('\n')}\n\nOPPORTUNITIES:\n${analysis.swot.opportunities.join('\n')}\n\nTHREATS:\n${analysis.swot.threats.join('\n')}`;
-                        
-                        const report = `THE TIEBREAKER: ANALYSIS REPORT\n` +
-                          `Query: ${history[0]}\n\n` +
-                          `SUMMARY\n${analysis.summary}\n\n` +
-                          `PROS\n${pros}\n\n` +
-                          `CONS\n${cons}\n\n` +
-                          `SWOT ANALYSIS\n${swot}`;
-                          
-                        const blob = new Blob([report], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `tiebreaker-report-${new Date().toISOString().split('T')[0]}.txt`;
-                        a.click();
-                        URL.revokeObjectURL(url);
+                        const report = `THE TIEBREAKER: ANALYSIS REPORT\nQuery: ${activeQuery}\n\nSUMMARY\n${analysis.summary}\n\nPROS\n${pros}\n\nCONS\n${cons}\n\nSWOT\n${swot}`;
+                        downloadFile(report, 'full-report.txt');
                       }}
-                      className="w-full py-3 bg-white border border-slate-900 text-slate-900 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 group"
-                    >
-                      Plain Text <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                    </button>
+                    />
+
+                    <ExportButton 
+                      label="Export SWOT Core"
+                      onClick={() => {
+                        const swot = `SWOT ANALYSIS: ${activeQuery}\n\nSTRENGTHS:\n${analysis.swot.strengths.join('\n')}\n\nWEAKNESSES:\n${analysis.swot.weaknesses.join('\n')}\n\nOPPORTUNITIES:\n${analysis.swot.opportunities.join('\n')}\n\nTHREATS:\n${analysis.swot.threats.join('\n')}`;
+                        downloadFile(swot, 'swot-analysis.txt');
+                      }}
+                    />
+
+                    <ExportButton 
+                      label="Export Matrix Mapping"
+                      onClick={() => {
+                        const matrix = `COMPARISON MATRIX: ${activeQuery}\n\nHeaders: ${analysis.comparisonTable.headers.join(' | ')}\n\n` + 
+                          analysis.comparisonTable.rows.map(r => `${r.label}: ${r.values.join(' | ')}`).join('\n');
+                        downloadFile(matrix, 'comparison-matrix.txt');
+                      }}
+                    />
+
+                    <ExportButton 
+                      label="Export Weighted Factors"
+                      onClick={() => {
+                        const pros = analysis.factors.filter(f => f.category === 'pro').map(f => `[PRO] ${f.text} (W:${f.weight})`).join('\n');
+                        const cons = analysis.factors.filter(f => f.category === 'con').map(f => `[CON] ${f.text} (W:${f.weight})`).join('\n');
+                        downloadFile(`WEIGHTED FACTORS: ${activeQuery}\n\nPROS:\n${pros}\n\nCONS:\n${cons}`, 'weighted-factors.txt');
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -189,6 +270,7 @@ export default function App() {
                   <FactorsList 
                     factors={analysis.factors} 
                     onUpdateWeight={updateWeight} 
+                    query={activeQuery}
                   />
                 )}
                 {mode === 'pairwise' && (
@@ -238,6 +320,23 @@ export default function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function ExportButton({ active, onClick, label }: { active?: boolean, onClick: () => void, label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full py-2.5 px-4 text-[10px] font-black uppercase tracking-[0.15em] border border-slate-900 transition-all flex items-center justify-between group/btn",
+        active 
+          ? "bg-slate-900 text-white italic" 
+          : "bg-white text-slate-900 hover:bg-slate-50"
+      )}
+    >
+      <span>{label}</span>
+      <ChevronRight size={12} className="opacity-0 group-hover/btn:opacity-100 group-hover/btn:translate-x-1 transition-all" />
+    </button>
   );
 }
 

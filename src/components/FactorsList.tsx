@@ -4,17 +4,20 @@
  */
 
 import { useState } from 'react';
-import { Plus, Minus, Filter } from 'lucide-react';
+import { Plus, Minus, Filter, BrainCircuit, Sparkles, X } from 'lucide-react';
 import { Factor, cn } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { summarizeFactors } from '../services/geminiService';
 
 interface FactorsListProps {
   factors: Factor[];
   onUpdateWeight: (id: string, weight: number) => void;
 }
 
-export function FactorsList({ factors, onUpdateWeight }: FactorsListProps) {
+export function FactorsList({ factors, onUpdateWeight, query }: FactorsListProps & { query: string }) {
   const [filter, setFilter] = useState<'all' | 'pros' | 'cons'>('all');
+  const [liveVerdict, setLiveVerdict] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   const pros = factors.filter(f => f.category === 'pro');
   const cons = factors.filter(f => f.category === 'con');
@@ -27,20 +30,64 @@ export function FactorsList({ factors, onUpdateWeight }: FactorsListProps) {
   const conScore = calculateScore(cons);
   const totalScore = proScore - conScore;
 
+  const handleSummarize = async () => {
+    setIsSummarizing(true);
+    try {
+      const summary = await summarizeFactors(query, factors);
+      setLiveVerdict(summary);
+    } catch (error) {
+      alert("Failed to generate summary.");
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Search/Filter Controls */}
-      <div className="flex items-center justify-between bg-white border border-slate-200 p-2">
-        <div className="flex items-center gap-1 bg-slate-100 p-1 border border-slate-200">
+      <div className="flex flex-col md:flex-row items-center justify-between bg-white border border-slate-200 p-2 gap-2">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 border border-slate-200 w-full md:w-auto">
           <FilterButton active={filter === 'all'} onClick={() => setFilter('all')} label="All Factors" />
           <FilterButton active={filter === 'pros'} onClick={() => setFilter('pros')} label="Pros Only" />
           <FilterButton active={filter === 'cons'} onClick={() => setFilter('cons')} label="Cons Only" />
         </div>
-        <div className="flex items-center gap-2 px-4">
-          <Filter size={12} strokeWidth={3} className="text-slate-400" />
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter Active</span>
-        </div>
+        
+        <button 
+          onClick={handleSummarize}
+          disabled={isSummarizing}
+          className="w-full md:w-auto flex items-center justify-center gap-3 bg-indigo-600 text-white px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-700 disabled:opacity-50 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]"
+        >
+          {isSummarizing ? (
+            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : <BrainCircuit size={14} strokeWidth={3} />}
+          <span>Generate Live Verdict</span>
+        </button>
       </div>
+
+      <AnimatePresence>
+        {liveVerdict && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-slate-900 border-2 border-slate-900 p-8 shadow-[8px_8px_0px_0px_rgba(79,70,229,1)] relative group"
+          >
+            <button 
+              onClick={() => setLiveVerdict(null)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+            >
+              <X size={16} strokeWidth={3} />
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <Sparkles size={16} className="text-indigo-400" strokeWidth={3} />
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em]">Current Weight Verdict</span>
+            </div>
+            <p className="text-sm font-bold text-slate-100 italic leading-relaxed uppercase tracking-tight">
+              {liveVerdict}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="mt-4 space-y-px bg-slate-200 border border-slate-200">
         <div className={cn(

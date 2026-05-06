@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { DecisionAnalysis } from "../types";
+import { DecisionAnalysis, Factor } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -92,6 +92,26 @@ export async function analyzeDecision(query: string): Promise<DecisionAnalysis> 
     return JSON.parse(response.text) as DecisionAnalysis;
   } catch (error) {
     console.error("Error analyzing decision:", error);
+    throw error;
+  }
+}
+
+export async function summarizeFactors(query: string, factors: Factor[]): Promise<string> {
+  const prompt = `Based on the decision query: "${query}", summarize the current factors and their weighted importance into a concise "Tiebreaker Verdict" (one paragraph).
+  Current Factors:
+  ${factors.map(f => `- ${f.category.toUpperCase()}: ${f.text} (Weight: ${f.weight})`).join('\n')}
+  
+  Provide a final, authoritative recommendation based strictly on the cumulative weights.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+
+    return response.text || "Unable to generate summary.";
+  } catch (error) {
+    console.error("Error summarizing factors:", error);
     throw error;
   }
 }
